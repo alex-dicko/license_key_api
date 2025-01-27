@@ -1,9 +1,9 @@
 package main
 
 import (
-	"net/http"
 	"license/config"
 	"license/handlers"
+	"net/http"
 )
 
 func main() {
@@ -11,7 +11,8 @@ func main() {
 	config.Connect()
 
 	http.HandleFunc("/create", handlers.AddKey)
+	http.HandleFunc("/delete", handlers.DeleteKey)
 
-	// Listen	
+	// Listen
 	http.ListenAndServe(":8090", nil)
 }
