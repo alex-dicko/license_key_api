@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"license/auth"
 	"license/config"
 	"license/models"
 	"net/http"
@@ -13,6 +14,22 @@ import (
 
 func AddKey(w http.ResponseWriter, req *http.Request) {
 
+	tokenString := req.Header.Get("Authorization")
+
+	if tokenString == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	tokenString = tokenString[len("Bearer "):]
+
+	err := auth.VerifyJWTToken(tokenString)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "Invalid token")
+		return
+	}
+
 	type Response struct {
 		Message string `json:"message"`
 		Success bool   `json:"success"`
@@ -22,7 +39,6 @@ func AddKey(w http.ResponseWriter, req *http.Request) {
 	new_uuid := uuid.New().String()
 	key := models.LicenseKey{Key: new_uuid}
 	config.Db.Create(&key)
-
 	response := Response{
 		Message: "Successfullt Created Key",
 		Success: true,
@@ -64,4 +80,40 @@ func DeleteKey(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintf(w, "Deleted Key: %s", key.Key)
+}
+
+func AuthenticateKey(w http.ResponseWriter, req *http.Request) {
+
+	type Response struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+		Key     string `json:"key"`
+	}
+
+	if req.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+
+	uuid := req.URL.Query().Get("uuid")
+	var key models.LicenseKey
+	err := config.Db.Where("key = ?", uuid).First(&key).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "Key Not Found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	response := Response{
+		Success: true,
+		Message: "Successfully authenticated",
+		Key:     uuid,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }

@@ -7,6 +7,12 @@ import (
 
 type LicenseKey struct {
 	gorm.Model
-	Key string `gorm:type:uuid;`
+	Key  string `gorm:type:uuid;`
 	Hwid string
+}
+
+type User struct {
+	gorm.Model
+	Username string
+	Password string
 }
